@@ -1,0 +1,16 @@
+*.ckpt
+
+*.pyc
+__pycache__/
+*.egg-info/
+outputs/
+result/
+
+trained_models/*.ckpt
+monoscene_output/*
+core*
+images
+.vscode
+
+__pycache__
+.ipynb_checkpoints
