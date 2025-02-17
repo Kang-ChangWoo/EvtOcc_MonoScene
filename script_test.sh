@@ -8,6 +8,7 @@ echo "==========================================================================
 
 # [for KITTI]
 echo "KITTI_PREPROCESS: $KITTI_PREPROCESS"
+echo "KITTI_PREPROCESS(low_resolution): $KITTI_PREPROCESS_LOW"
 echo "KITTI_ROOT: $KITTI_ROOT"
 echo "KITTI_LOG: $KITTI_LOG"
 
@@ -31,6 +32,7 @@ CUDA_VISIBLE_DEVICES=2,3 python monoscene/scripts/generate_output.py \
     dataset=kitti \
     kitti_root=$KITTI_ROOT \
     kitti_preprocess_root=$KITTI_PREPROCESS \
+    kitti_preprocess_lowRes_root=$KITTI_PREPROCESS_LOW \
     n_gpus=1 batch_size=1
 
 echo "==========================================================================================================="

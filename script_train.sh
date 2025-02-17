@@ -6,6 +6,7 @@ echo "==========================================================================
 # echo "NYU_LOG: $NYU_LOG"
 
 echo "KITTI_PREPROCESS: $KITTI_PREPROCESS"
+echo "KITTI_PREPROCESS(low_resolution): $KITTI_PREPROCESS_LOW"
 echo "KITTI_ROOT: $KITTI_ROOT"
 echo "KITTI_LOG: $KITTI_LOG"
 
@@ -31,8 +32,10 @@ CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 python monoscene/scripts/train_monoscene.py
     enable_log=true \
     kitti_root=$KITTI_ROOT \
     kitti_preprocess_root=$KITTI_PREPROCESS\
+    kitti_preprocess_lowRes_root=$KITTI_PREPROCESS_LOW\
     kitti_logdir=$KITTI_LOG \
-    n_gpus=4 batch_size=4
+    n_gpus=1 batch_size=1 \
+    low_resolution=true
 
 
 echo "==========================================================================================================="

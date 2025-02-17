@@ -6,7 +6,7 @@ export KITTI_ROOT='/root/dev/data/dataset/SemanticKITTI'
 # export KITTI_LOG='/root/storage/implementation/shared_evtOcc/MonoScene/kitti_log'
 export EVENT_ROOT='/root/dev/data/dataset/SemanticKITTI/event_bin3_onoff/'
 
-
+## TBD!!
 # 새 경로 (Node3 local2 세팅)
 NEW_BASE='/root/local2/changwoo'
 

@@ -3,27 +3,26 @@
 dataset: "kitti"
 
 n_relations: 4
-
 enable_log: false
-# kitti_root: '/path/to/semantic_kitti'
-kitti_root: '/root/dev/data/dataset/SemanticKITTI'
-# kitti_preprocess_root: '/path/to/kitti/preprocess/folder'
-kitti_preprocess_root: '/root/dev/data/dataset/SemanticKITTI/preprocess_cw'
-kitti_logdir: '/path/to/semantic_kitti/logdir'
 
-NYU_root: '/root/data/NYU_dataset/depthbin'
-NYU_preprocess_root: '/root/data/NYU_dataset/preprocess/base'
-logdir: '/root/dev/Modified_Monoscene/logdir'
+kitti_root: '/root/dev/data/dataset/SemanticKITTI' # '/path/to/semantic_kitti'
+kitti_preprocess_root: '/root/data0/dataset/SemanticKITTI/preprocess_cw' # '/path/to/kitti/preprocess/folder'
+kitti_preprocess_lowRes_root: '/root/data0/dataset/SemanticKITTI/preprocess_cw_lowResolution' # CW added.
+kitti_logdir: '/root/dev0/implementation/shared_evtOcc/MonoScene/kitti_log' #'/path/to/semantic_kitti/logdir'
+
+NYU_root: '/root/data/NYU_dataset/depthbin' # not used
+NYU_preprocess_root: '/root/data/NYU_dataset/preprocess/base' # not used
+logdir: '/root/dev/Modified_Monoscene/logdir' # not used
 
 
 fp_loss: true 
 frustum_size: 8 
-batch_size: 4
-n_gpus: 4
+batch_size: 1
+n_gpus: 1
 num_workers_per_gpu: 12 # n4 have 128 workers
-exp_prefix: "evt_3onoff_woNorm"
+exp_prefix: "after0217_evt_3onoff_woNorm"
 run: 1
-lr: 1e-4
+lr: 1e-5 #1e-4
 weight_decay: 1e-4 
 
 context_prior: true
@@ -36,3 +35,6 @@ geo_scal_loss: true
 project_1_2: true
 project_1_4: true
 project_1_8: true
+
+# CW added.
+low_resolution: true

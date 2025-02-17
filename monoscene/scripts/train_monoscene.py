@@ -45,7 +45,10 @@ def main(config: DictConfig):
         class_names = kitti_class_names
         max_epochs = 31
         logdir = config.kitti_logdir
-        full_scene_size = (256, 256, 32)
+        if config.low_resolution:
+            full_scene_size = (128, 128, 16)
+        else:
+            full_scene_size = (256, 256, 32)
         project_scale = 2
         feature = 64
         n_classes = 20
@@ -54,10 +57,12 @@ def main(config: DictConfig):
         data_module = KittiDataModule(
             root=config.kitti_root,
             preprocess_root=config.kitti_preprocess_root,
+            preprocess_lowRes_root=config.kitti_preprocess_lowRes_root,
             frustum_size=config.frustum_size,
             project_scale=project_scale,
             batch_size=int(config.batch_size / config.n_gpus),
             num_workers=int(config.num_workers_per_gpu),
+            low_resolution=config.low_resolution,
         )
 
     elif config.dataset == "NYU":
@@ -76,6 +81,7 @@ def main(config: DictConfig):
             frustum_size=config.frustum_size,
             batch_size=int(config.batch_size / config.n_gpus),
             num_workers=int(config.num_workers_per_gpu * config.n_gpus),
+            # low_resolution need to be added.
         )
 
     project_res = ["1"]
@@ -90,7 +96,6 @@ def main(config: DictConfig):
         project_res.append("8")
 
 
-    # TODO 1: full_scene_size 은 무엇을 의미하는가?
     model = MonoScene(
         dataset=config.dataset,
         frustum_size=config.frustum_size,
@@ -136,7 +141,8 @@ def main(config: DictConfig):
 
     model_path = "None"
     # model_path = os.path.join(logdir, exp_name, "checkpoints/last.ckpt")
-    
+    # model_path = '/root/dev0/implementation/shared_evtOcc/MonoScene/outputs/2025-02-04/19-59-56/checkpoints/best_model-epoch=11-val-mIoU=0.00000.ckpt'
+
     if os.path.isfile(model_path):
         # Continue training from last.ckpt
         trainer = Trainer(

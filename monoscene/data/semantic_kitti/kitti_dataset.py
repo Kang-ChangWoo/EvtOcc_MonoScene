@@ -14,14 +14,23 @@ class KittiDataset(Dataset):
         split,
         root,
         preprocess_root,
+        preprocess_lowRes_root,
         project_scale=2,
         frustum_size=4,
         color_jitter=None,
         fliplr=0.0,
+        low_resolution=False,
     ):
         super().__init__()
         self.root = root
-        self.label_root = os.path.join(preprocess_root, "labels")
+
+        if low_resolution:
+            print(f"Initializing KittiDataset with preprocess_lowRes_root: {preprocess_lowRes_root}")
+            self.label_root = os.path.join(preprocess_lowRes_root, "labels")
+        else:
+            print(f"Initializing KittiDataset with preprocess_root: {preprocess_root}")
+            self.label_root = os.path.join(preprocess_root, "labels")
+
         self.n_classes = 20
 
         splits = {
@@ -39,7 +48,8 @@ class KittiDataset(Dataset):
         self.vox_origin = np.array([0, -25.6, -2])
         self.fliplr = fliplr
 
-        self.voxel_size = 0.2  # 0.2m
+        self.voxel_size = 0.4 if low_resolution else 0.2 # Low:0.4 / Defalut:0.2
+
         self.img_W = 1220
         self.img_H = 370
 
@@ -47,9 +57,7 @@ class KittiDataset(Dataset):
         self.scans = []
         for sequence in self.sequences:
 
-            calib = self.read_calib(
-                os.path.join(self.root, "dataset", "sequences", sequence, "calib.txt")
-            )
+            calib = self.read_calib(os.path.join(self.root, "dataset", "sequences", sequence, "calib.txt"))
             P = calib["P2"]
             T_velo_2_cam = calib["Tr"]
             proj_matrix = P @ T_velo_2_cam
@@ -95,7 +103,7 @@ class KittiDataset(Dataset):
         rgb_path = os.path.join(self.root, "dataset", "sequences", sequence, "image_2", frame_id + ".png")
         # /root/dev/data/dataset/SemanticKITTI/event/00/image_2
         # evt_path = os.path.join('/root/local1/changwoo/SemanticKITTI', "event_bin3_onoff_noNorm", sequence, "image_2", frame_id + ".npy")
-        evt_path = os.path.join('/root/dev/data/dataset/SemanticKITTI', "event_bin3_onoff_noNorm", sequence, "image_2", frame_id + ".npy")
+        evt_path = os.path.join('/root/data0/dataset/SemanticKITTI', "event_bin3_onoff_noNorm", sequence, "image_2", frame_id + ".npy")
         # /root/dev/data/dataset/SemanticKITTI
         # /root/dev/data/dataset/SemanticKITTI/event
         # actual: /root/dev/data/dataset/SemanticKITTI/dataset/SemanticKITTI/event/08/image_2/2160.npy
