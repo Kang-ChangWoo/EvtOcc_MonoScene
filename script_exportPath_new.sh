@@ -10,7 +10,7 @@ export KITTI_ROOT='/root/data0/dataset/SemanticKITTI'
 export KITTI_LOG='/root/dev0/implementation/shared_evtOcc/MonoScene/kitti_log'
 
 export MONOSCENE_OUTPUT='/root/dev0/implementation/shared_evtOcc/MonoScene/result'
-/root/data0/dataset/SemanticKITTI
+# /root/data0/dataset/SemanticKITTI
 export HYDRA_FULL_ERROR=1
 
 pip install -e ./

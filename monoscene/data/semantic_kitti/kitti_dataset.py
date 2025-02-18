@@ -103,6 +103,7 @@ class KittiDataset(Dataset):
         rgb_path = os.path.join(self.root, "dataset", "sequences", sequence, "image_2", frame_id + ".png")
         # /root/dev/data/dataset/SemanticKITTI/event/00/image_2
         # evt_path = os.path.join('/root/local1/changwoo/SemanticKITTI', "event_bin3_onoff_noNorm", sequence, "image_2", frame_id + ".npy")
+        # evt_path = os.path.join('/root/dev/data/dataset/SemanticKITTI', "event_bin3_onoff_noNorm", sequence, "image_2", frame_id + ".npy")
         evt_path = os.path.join('/root/data0/dataset/SemanticKITTI', "event_bin3_onoff_noNorm", sequence, "image_2", frame_id + ".npy")
         # /root/dev/data/dataset/SemanticKITTI
         # /root/dev/data/dataset/SemanticKITTI/event
@@ -130,7 +131,7 @@ class KittiDataset(Dataset):
                 self.img_W,
                 self.img_H,
                 self.scene_size,
-            )            
+            )
 
             data["projected_pix_{}".format(scale_3d)] = projected_pix
             data["pix_z_{}".format(scale_3d)] = pix_z
@@ -250,3 +251,20 @@ class KittiDataset(Dataset):
         calib_out["Tr"] = np.identity(4)  # 4x4 matrix
         calib_out["Tr"][:3, :4] = calib_all["Tr"].reshape(3, 4)
         return calib_out
+
+
+class SequentialKittiDataset(KittiDataset):
+    def __init__(self, *args, sequence_length=5, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.sequence_length = sequence_length
+
+    def __getitem__(self, index):
+        data_sequence = []
+        for i in range(self.sequence_length):
+            data_index = (index + i) % len(self.scans)
+            data = super().__getitem__(data_index)
+            data_sequence.append(data)
+        return data_sequence
+
+    def __len__(self):
+        return len(self.scans) - self.sequence_length + 1

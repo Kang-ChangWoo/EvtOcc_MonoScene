@@ -5,7 +5,7 @@ dataset: "kitti"
 n_relations: 4
 enable_log: false
 
-kitti_root: '/root/dev/data/dataset/SemanticKITTI' # '/path/to/semantic_kitti'
+kitti_root: '/root/data0/dataset/SemanticKITTI' # '/path/to/semantic_kitti'
 kitti_preprocess_root: '/root/data0/dataset/SemanticKITTI/preprocess_cw' # '/path/to/kitti/preprocess/folder'
 kitti_preprocess_lowRes_root: '/root/data0/dataset/SemanticKITTI/preprocess_cw_lowResolution' # CW added.
 kitti_logdir: '/root/dev0/implementation/shared_evtOcc/MonoScene/kitti_log' #'/path/to/semantic_kitti/logdir'
@@ -20,7 +20,7 @@ frustum_size: 8
 batch_size: 1
 n_gpus: 1
 num_workers_per_gpu: 12 # n4 have 128 workers
-exp_prefix: "after0217_evt_3onoff_woNorm"
+exp_prefix: "after0217_noSeq_noTrn2D_evt_3onoff_woNorm"
 run: 1
 lr: 1e-5 #1e-4
 weight_decay: 1e-4 
@@ -38,3 +38,4 @@ project_1_8: true
 
 # CW added.
 low_resolution: true
+sequence_length: 3

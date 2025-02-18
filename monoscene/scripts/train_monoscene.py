@@ -8,7 +8,7 @@ from monoscene.data.semantic_kitti.params import (semantic_kitti_class_frequenci
 from monoscene.data.NYU.params import (class_weights as NYU_class_weights, NYU_class_names,)
 from monoscene.data.NYU.nyu_dm import NYUDataModule
 from torch.utils.data.dataloader import DataLoader
-from monoscene.models.monoscene import MonoScene
+from monoscene.models.monoscene import MonoScene, RecurrentMonoScene
 from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.loggers import WandbLogger # Added
@@ -26,6 +26,7 @@ def main(config: DictConfig):
     exp_name += "_FrusSize_{}".format(config.frustum_size)
     exp_name += "_nRelations{}".format(config.n_relations)
     exp_name += "_WD{}_lr{}".format(config.weight_decay, config.lr)
+    
 
     # if config.CE_ssc_loss:
     #     exp_name += "_CEssc"
@@ -63,8 +64,9 @@ def main(config: DictConfig):
             batch_size=int(config.batch_size / config.n_gpus),
             num_workers=int(config.num_workers_per_gpu),
             low_resolution=config.low_resolution,
+            sequence_length=int(config.sequence_length),
         )
-
+            
     elif config.dataset == "NYU":
         class_names = NYU_class_names
         max_epochs = 30
@@ -95,27 +97,50 @@ def main(config: DictConfig):
         exp_name += "_8"
         project_res.append("8")
 
+    if int(config.sequence_length) == 1:
+        model = MonoScene(
+            dataset=config.dataset,
+            frustum_size=config.frustum_size,
+            project_scale=project_scale,
+            n_relations=config.n_relations,
+            fp_loss=config.fp_loss,
+            feature=feature,
+            full_scene_size=full_scene_size,
+            project_res=project_res,
+            n_classes=n_classes,
+            class_names=class_names,
+            context_prior=config.context_prior,
+            relation_loss=config.relation_loss,
+            CE_ssc_loss=config.CE_ssc_loss,
+            sem_scal_loss=config.sem_scal_loss,
+            geo_scal_loss=config.geo_scal_loss,
+            lr=config.lr,
+            weight_decay=config.weight_decay,
+            class_weights=class_weights,
+        )
+    elif int(config.sequence_length) > 1:
+        model = RecurrentMonoScene(
+            dataset=config.dataset,
+            frustum_size=config.frustum_size,
+            project_scale=project_scale,
+            n_relations=config.n_relations,
+            fp_loss=config.fp_loss,
+            feature=feature,
+            full_scene_size=full_scene_size,
+            project_res=project_res,
+            n_classes=n_classes,
+            class_names=class_names,
+            context_prior=config.context_prior,
+            relation_loss=config.relation_loss,
+            CE_ssc_loss=config.CE_ssc_loss,
+            sem_scal_loss=config.sem_scal_loss,
+            geo_scal_loss=config.geo_scal_loss,
+            lr=config.lr,
+            weight_decay=config.weight_decay,
+            class_weights=class_weights,
+            sequence_length=int(config.sequence_length),
+        )
 
-    model = MonoScene(
-        dataset=config.dataset,
-        frustum_size=config.frustum_size,
-        project_scale=project_scale,
-        n_relations=config.n_relations,
-        fp_loss=config.fp_loss,
-        feature=feature,
-        full_scene_size=full_scene_size,
-        project_res=project_res,
-        n_classes=n_classes,
-        class_names=class_names,
-        context_prior=config.context_prior,
-        relation_loss=config.relation_loss,
-        CE_ssc_loss=config.CE_ssc_loss,
-        sem_scal_loss=config.sem_scal_loss,
-        geo_scal_loss=config.geo_scal_loss,
-        lr=config.lr,
-        weight_decay=config.weight_decay,
-        class_weights=class_weights,
-    )
 
 
     if config.enable_log:
