@@ -178,7 +178,7 @@ class UNet2D(nn.Module):
         num_features = 2560
 
         print("Loading base model ()...".format(basemodel_name), end="")
-        basemodel = torch.hub.load("rwightman/gen-efficientnet-pytorch", basemodel_name, pretrained=False) #True sequence 필요
+        basemodel = torch.hub.load("rwightman/gen-efficientnet-pytorch", basemodel_name, pretrained=True) #True sequence 필요
         print("Done.")
 
         # Remove last layer

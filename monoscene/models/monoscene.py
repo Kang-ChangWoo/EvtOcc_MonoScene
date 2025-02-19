@@ -326,28 +326,29 @@ class ConvLSTMCell(nn.Module):
         )
 
         # **1x1 Residual Connection 추가**
-        self.residual = nn.Conv2d(
-            in_channels=self.input_dim,
-            out_channels=self.hidden_dim,
-            kernel_size=1,  # 1x1 Conv
-            padding=0,      # 차원 유지
-            bias=self.bias
-        )
+        # self.residual = nn.Conv2d(
+        #     in_channels=self.input_dim,
+        #     out_channels=self.hidden_dim,
+        #     kernel_size=1,  # 1x1 Conv
+        #     padding=0,      # 차원 유지
+        #     bias=self.bias
+        # )
 
     def forward(self, x, h_prev, c_prev):
         batch_size, _, H, W = x.shape
 
         if h_prev is None:
-            h_prev = torch.zeros((batch_size, self.hidden_dim, H, W), device=x.device, dtype=x.dtype)
+            h_prev = torch.zeros_like(x)
+            # h_prev = torch.zeros((batch_size, self.hidden_dim, H, W), device=x.device, dtype=x.dtype)
         if c_prev is None:
-            c_prev = torch.zeros((batch_size, self.hidden_dim, H, W), device=x.device, dtype=x.dtype)
+            c_prev = torch.zeros_like(x)
+            # c_prev = torch.zeros((batch_size, self.hidden_dim, H, W), device=x.device, dtype=x.dtype)
 
         # **1x1 Residual Connection**
-        x_res = self.residual(x)  # (batch, hidden_dim, H, W)
+        # x_res = self.residual(x)  # (batch, hidden_dim, H, W)
 
         # Concatenate x and h_prev along channel axis
         combined = torch.cat([x, h_prev], dim=1)
-
         # Compute LSTM Gates
         conv_output = self.conv(combined)
         cc_i, cc_f, cc_o, cc_g = torch.split(conv_output, self.hidden_dim, dim=1)
@@ -367,9 +368,76 @@ class ConvLSTMCell(nn.Module):
         h_next = o * torch.tanh(c_next)
 
         # **Residual Connection 추가**
-        h_next = h_next + x_res  # Skip Connection 추가
-
+        h_next = h_next #+ x_res  # Skip Connection 추가
         return h_next, c_next
+
+import torch
+import torch.nn as nn
+
+class ConvGRUCell(nn.Module):
+    def __init__(self, input_dim, hidden_dim, kernel_size=3, bias=True):
+        super(ConvGRUCell, self).__init__()
+
+        self.input_dim = input_dim
+        self.hidden_dim = hidden_dim
+        self.kernel_size = kernel_size
+        self.padding = (kernel_size - 1) // 2
+        self.bias = bias
+
+        # GRU-style gates (Reset and Update)
+        self.conv_gates = nn.Conv2d(
+            in_channels=self.input_dim + self.hidden_dim,
+            out_channels=2 * self.hidden_dim,  # Reset gate, Update gate
+            kernel_size=self.kernel_size,
+            padding=self.padding,
+            bias=self.bias
+        )
+
+        # Candidate hidden state
+        self.conv_candidate = nn.Conv2d(
+            in_channels=self.input_dim + self.hidden_dim,
+            out_channels=self.hidden_dim,
+            kernel_size=self.kernel_size,
+            padding=self.padding,
+            bias=self.bias
+        )
+
+        # 1x1 Residual Connection 추가
+        # self.residual = nn.Conv2d(
+        #     in_channels=self.input_dim,
+        #     out_channels=self.hidden_dim,
+        #     kernel_size=1,
+        #     padding=0,
+        #     bias=self.bias
+        # )
+
+    def forward(self, x, h_prev):
+        batch_size, _, H, W = x.shape
+
+        if h_prev is None:
+            h_prev = torch.zeros((batch_size, self.hidden_dim, H, W), device=x.device, dtype=x.dtype)
+
+        #x_res = self.residual(x)  # Residual connection
+
+        # Compute Reset and Update gates
+        combined = torch.cat([x, h_prev], dim=1)
+        gates = self.conv_gates(combined)
+        r, z = torch.split(gates, self.hidden_dim, dim=1)
+
+        r = torch.sigmoid(r)  # Reset gate
+        z = torch.sigmoid(z)  # Update gate
+
+        # Compute candidate hidden state
+        combined_candidate = torch.cat([x, r * h_prev], dim=1)
+        h_tilde = torch.tanh(self.conv_candidate(combined_candidate))
+
+        # Compute new hidden state
+        h_next = (1 - z) * h_prev + z * h_tilde
+
+        # Residual connection
+        h_next = h_next # + x_res
+
+        return h_next
 
 # 기존의 forward 메서드를 ConvLSTMCell을 사용하도록 수정합니다.
 class ConvLSTM(nn.Module):
@@ -378,17 +446,14 @@ class ConvLSTM(nn.Module):
         self.num_layers = num_layers
         self.hidden_dim = hidden_dim
 
-        self.layers = nn.ModuleList([
-            ConvLSTMCell(input_dim if i == 0 else hidden_dim, hidden_dim, kernel_size, bias)
-            for i in range(num_layers)
-        ])
+        self.layers = nn.ModuleList([ConvLSTMCell(input_dim if i == 0 else hidden_dim, hidden_dim, kernel_size, bias) for i in range(num_layers)])
 
     def forward(self, x, h_prev=None, c_prev=None):
         h_next, c_next = [], []
 
         for i, layer in enumerate(self.layers):
-            h_i = h_prev[i] if h_prev is not None else None
-            c_i = c_prev[i] if c_prev is not None else None
+            h_i = h_prev if h_prev is not None else None
+            c_i = c_prev if c_prev is not None else None
             h_i, c_i = layer(x, h_i, c_i)
             x = h_i  # 다음 레이어로 전달
             h_next.append(h_i)
@@ -396,6 +461,27 @@ class ConvLSTM(nn.Module):
 
         return h_next[0], c_next[0] # multi-layer deprecated.
 
+class ConvGRU(nn.Module):
+    def __init__(self, input_dim, hidden_dim, kernel_size=3, bias=True, num_layers=1):
+        super(ConvGRU, self).__init__()
+        self.num_layers = num_layers
+        self.hidden_dim = hidden_dim
+
+        self.layers = nn.ModuleList([
+            ConvGRUCell(input_dim if i == 0 else hidden_dim, hidden_dim, kernel_size, bias)
+            for i in range(num_layers)
+        ])
+
+    def forward(self, x, h_prev=None):
+        h_next = []
+
+        for i, layer in enumerate(self.layers):
+            h_i = h_prev if h_prev is not None else None
+            h_i = layer(x, h_i)
+            x = h_i  # 다음 레이어로 전달
+            h_next.append(h_i)
+
+        return h_next[0]  # 단층 구조
 
 class RecurrentMonoScene(pl.LightningModule):
     def __init__(
@@ -473,7 +559,7 @@ class RecurrentMonoScene(pl.LightningModule):
 
 
         # 해상도별 ConvGRU2D 저장
-        self.ConvLSTMs = nn.ModuleDict({
+        self.RNNs = nn.ModuleDict({
             "1_1": ConvLSTM(input_dim=64, hidden_dim=64, kernel_size=3, bias=True),
             "1_2": ConvLSTM(input_dim=64, hidden_dim=64, kernel_size=3, bias=True),
             "1_4": ConvLSTM(input_dim=64, hidden_dim=64, kernel_size=3, bias=True),
@@ -487,20 +573,22 @@ class RecurrentMonoScene(pl.LightningModule):
         self.val_metrics = SSCMetrics(self.n_classes)
         self.test_metrics = SSCMetrics(self.n_classes)
 
-    def forward(self, batch, prev_states=None):
+    def forward(self, batch): #prev_states=None
         img = batch["img"] # 3, 1, 3, 370, 1220
-
-        batch_size = img.shape[1]
-        #batch_size = len(img) deprecated
+        sequence_length, batch_size, _, _, _ = img.shape
 
         out = {}
         #prev_states = {i: None for i in resolution_keys} if prev_states is None else prev_states
-        cell_states = {}
-        hidden_states = {}
 
-        sequence_length = 3
+        res_keys = ["1_1", "1_2", "1_4", "1_8", "1_16"]
 
-        for seq in range(sequence_length):   
+        cell_states = {k: None for k in res_keys}
+        hidden_states = {k: None for k in res_keys}
+        prev_h = None
+        prev_c = None
+
+
+        for seq in range(sequence_length):
             x_rgb = self.net_rgb(img[seq,]) # (1,3,370,1220)
             res_keys = x_rgb.keys() # ["1_1", "1_2", "1_4", "1_8", "1_16"]
             batch_size = img[seq,].shape[0]
@@ -519,18 +607,28 @@ class RecurrentMonoScene(pl.LightningModule):
             # torch.Size([1, 200, 30, 40])
 
             # TODO: 원래 x_rgb가 다층 구조니까 얘네만 업데이트하는 모듈을 넣으면 된다.
-        
-
-            
 
             # for i in range(batch_size): # TODO batch 연산 고려?
             for k in res_keys:
                 #features = x_rgb[k][i] # (batch_size, feature, H, W) TODO batch 연산 고려?
                 features = x_rgb[k]
-                prev_states = cell_states[k] if prev_states is not None else None
+                
+                # For LSTM
+                if cell_states[k] is None:
+                    hidden_states[k], cell_states[k] = self.RNNs[k](features, prev_h, prev_c)
+                else:
+                    prev_h = hidden_states[k]
+                    prev_c = cell_states[k]
+                    #LSTM
+                    hidden_states[k], cell_states[k] = self.RNNs[k](features, prev_h, prev_c)
 
-                hidden_states[k], cell_states[k] = self.ConvLSTMs[k](features, prev_states)
-            
+
+                # For GRU
+                # if hidden_states[k] is None:
+                #     hidden_states[k] = self.RNNs[k](features, hidden_states[k])
+                # else:
+                #     hidden_states[k] = self.RNNs[k](features, hidden_states[k])
+
             # print(f"hidden_states: {hidden_states[k].shape}") # [1, 64, 24, 77]
             x3ds = []
         

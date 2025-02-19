@@ -28,7 +28,7 @@ echo "================================================Training start.===========
 # [for KITTI]
 # TODO: saving other directory
 # CUDA_VISIBLE_DEVICES=5 python monoscene/scripts/train_monoscene.py,1,2,3,4,5,6,7 \
-CUDA_VISIBLE_DEVICES=0 python monoscene/scripts/train_monoscene.py \
+CUDA_VISIBLE_DEVICES=1 python monoscene/scripts/train_monoscene.py \
     dataset=kitti \
     enable_log=true \
     kitti_root=$KITTI_ROOT \
@@ -36,7 +36,7 @@ CUDA_VISIBLE_DEVICES=0 python monoscene/scripts/train_monoscene.py \
     kitti_preprocess_lowRes_root=$KITTI_PREPROCESS_LOW\
     kitti_logdir=$KITTI_LOG \
     n_gpus=1 batch_size=1 \
-    low_resolution=true \
+    low_resolution=false \
     sequence_length=1 \
 
 echo "==========================================================================================================="
