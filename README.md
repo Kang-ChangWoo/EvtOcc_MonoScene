@@ -17,7 +17,7 @@
 
 
 ## 저차원 MonoScene (25.02.17)
-<img src="/src/update_lowResolution.jpeg" width="800" height="400">
+<img src="/src/update_lowResolution.jpeg" width="800" height="200">
 
 - [목적] (128,128,16) 차원의 복셀을 출력하기 위한 코드임 (이전에는 (256,256,32) 차원).
 - [결과] 저차원/고차원을 셸 스크립트의 변수를 바꿔 가면서 실험할 수 있음.
