@@ -11,13 +11,13 @@
 
 
 ## RNN MonoScene (25.02.19)
-![Image](src/update_ConvLSTM.jpeg){: width="50%"}
+<img src="/src/update_ConvLSTM.jpeg" width="300" height="300">
 
 
 
 
 ## 저차원 MonoScene (25.02.17)
-![Image](src/update_lowResolution.jpeg){: width="50%" height="100%"}
+<img src="/src/update_lowResolution.jpeg" width="300" height="300">
 - [목적] (128,128,16) 차원의 복셀을 출력하기 위한 코드임 (이전에는 (256,256,32) 차원).
 - [결과] 저차원/고차원을 셸 스크립트의 변수를 바꿔 가면서 실험할 수 있음.
 - `preprocess.forLowResolution.py` 파일을 통해, (128,128,16) 복셀을 생성하여, `~/preprocess_cw_lowResolution` 폴더에 전처리하여 저장함.
