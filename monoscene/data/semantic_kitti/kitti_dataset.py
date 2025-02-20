@@ -20,6 +20,7 @@ class KittiDataset(Dataset):
         color_jitter=None,
         fliplr=0.0,
         low_resolution=False,
+        use_event=True,
     ):
         super().__init__()
         self.root = root
@@ -47,6 +48,7 @@ class KittiDataset(Dataset):
         self.scene_size = (51.2, 51.2, 6.4)
         self.vox_origin = np.array([0, -25.6, -2])
         self.fliplr = fliplr
+        self.use_event = use_event
 
         self.voxel_size = 0.4 if low_resolution else 0.2 # Low:0.4 / Defalut:0.2
 
@@ -137,9 +139,6 @@ class KittiDataset(Dataset):
             data["pix_z_{}".format(scale_3d)] = pix_z
             data["fov_mask_{}".format(scale_3d)] = fov_mask
 
-        check = False
-
-
         # for generating result from monoscene without error
         if self.split in ["val", "train"]:
             target_1_path = os.path.join(self.label_root, sequence, frame_id + "_1_1.npy")
@@ -150,10 +149,7 @@ class KittiDataset(Dataset):
             CP_mega_matrix = compute_CP_mega_matrix(target_1_8)
             data["CP_mega_matrix"] = CP_mega_matrix
 
-            if check:
-                print(f"CP_mega_matrix dtype: {CP_mega_matrix.dtype}")
-                print(f"CP_mega_matrix shape: {CP_mega_matrix.shape}")
-        # Added.
+        # CW Added.
         elif self.split == 'test':
             data["CP_mega_matrix"] = np.ones((64, 64, 4), dtype=np.float32)
             target = np.ones((256, 256, 32), dtype=np.float32)
@@ -186,43 +182,47 @@ class KittiDataset(Dataset):
         """
         Load RGB image into DataLoader (deprecated).
         """
-        #img = Image.open(rgb_path).convert("RGB")
-        
-        # Image augmentation
-        # if self.color_jitter is not None:
-        #     img = self.color_jitter(img)
+        if use_event == False:
+            img = Image.open(rgb_path).convert("RGB")
+            
+            # Image augmentation
+            if self.color_jitter is not None:
+                img = self.color_jitter(img)
 
-        # # PIL to numpy
-        # img = np.array(img, dtype=np.float32, copy=False) 
-        # img = img[:370, :1220, :]  # crop image
+            # PIL to numpy
+            img = np.array(img, dtype=np.float32, copy=False) 
+            img = img[:370, :1220, :]  # crop image
 
-        # Fliplr the image
-        # if np.random.rand() < self.fliplr:
-        #     img = np.ascontiguousarray(np.fliplr(img))
-        #     for scale in scale_3ds:
-        #         key = "projected_pix_" + str(scale)
-        #         data[key][:, 0] = img.shape[1] - 1 - data[key][:, 0]
+            # Fliplr the image
+            if np.random.rand() < self.fliplr:
+                img = np.ascontiguousarray(np.fliplr(img))
+                for scale in scale_3ds:
+                    key = "projected_pix_" + str(scale)
+                    data[key][:, 0] = img.shape[1] - 1 - data[key][:, 0]
+            
+            data["img"] = img
 
 
         """
         Load event dataset into DataLoader.
         """
-        evt_frame = np.load(evt_path)
-        evt = np.array(evt_frame, dtype=np.float32, copy=False) # '/ np.max(evt_frame)' not used
-        evt = evt[:3, :370, :1220] # 3(bin), 370(height), 1220(width)
+        elif use_event == True:
+            evt_frame = np.load(evt_path)
+            evt = np.array(evt_frame, dtype=np.float32, copy=False) # '/ np.max(evt_frame)' not used
+            evt = evt[:3, :370, :1220] # 3(bin), 370(height), 1220(width)
 
-        # Apply horizontal flip (Fliplr) to evt
-        if np.random.rand() < self.fliplr:
-            evt = np.ascontiguousarray(np.flip(evt, axis=2))  # Flip along the width axis (axis 2)
-            for scale in scale_3ds:
-                key = "projected_pix_" + str(scale)
-                # Update x-coordinates of projected pixel data to reflect the flip
-                data[key][:, 0] = evt.shape[2] - 1 - data[key][:, 0]
+            # Apply horizontal flip (Fliplr) to evt
+            if np.random.rand() < self.fliplr:
+                evt = np.ascontiguousarray(np.flip(evt, axis=2))  # Flip along the width axis (axis 2)
+                for scale in scale_3ds:
+                    key = "projected_pix_" + str(scale)
+                    # Update x-coordinates of projected pixel data to reflect the flip
+                    data[key][:, 0] = evt.shape[2] - 1 - data[key][:, 0]
 
-        evt_ts = torch.from_numpy(evt)
-        evt_ts = evt_ts.float()  # or .long() depending on your needs
-        data["img"] = evt_ts
-        del evt, evt_frame, evt_ts
+            evt_ts = torch.from_numpy(evt)
+            evt_ts = evt_ts.float()  # or .long() depending on your needs
+            data["img"] = evt_ts
+            del evt, evt_frame, evt_ts
 
         return data
 

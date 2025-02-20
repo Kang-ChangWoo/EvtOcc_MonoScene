@@ -17,6 +17,7 @@ class KittiDataModule(pl.LightningDataModule):
         num_workers=6,
         low_resolution=False,
         sequence_length=1,
+        use_event=True,
     ):
         super().__init__()
         self.root = root
@@ -28,6 +29,7 @@ class KittiDataModule(pl.LightningDataModule):
         self.frustum_size = frustum_size
         self.low_resolution = low_resolution
         self.sequence_length = sequence_length
+        self.use_event = use_event
 
     
     def setup(self, stage=None):
@@ -41,7 +43,8 @@ class KittiDataModule(pl.LightningDataModule):
                 frustum_size=self.frustum_size,
                 fliplr=0.5,
                 color_jitter=(0.4, 0.4, 0.4),
-                low_resolution=self.low_resolution,              
+                low_resolution=self.low_resolution,
+                use_event=self.use_event,              
             )
 
             self.val_ds = KittiDataset(
@@ -54,6 +57,7 @@ class KittiDataModule(pl.LightningDataModule):
                 fliplr=0,
                 color_jitter=None,
                 low_resolution=self.low_resolution,
+                use_event=self.use_event,
             )
 
             self.test_ds = KittiDataset(
@@ -66,6 +70,7 @@ class KittiDataModule(pl.LightningDataModule):
                 fliplr=0,
                 color_jitter=None,
                 low_resolution=self.low_resolution,
+                use_event=self.use_event,
             )
 
         elif self.sequence_length > 1:
@@ -80,6 +85,7 @@ class KittiDataModule(pl.LightningDataModule):
                 color_jitter=(0.4, 0.4, 0.4),
                 low_resolution=self.low_resolution,
                 sequence_length = self.sequence_length,
+                use_event=self.use_event,
             )
 
             self.val_ds = SequentialKittiDataset(
@@ -93,6 +99,7 @@ class KittiDataModule(pl.LightningDataModule):
                 color_jitter=None,
                 low_resolution=self.low_resolution,
                 sequence_length = self.sequence_length,
+                use_event=self.use_event,
             )
 
             self.test_ds = SequentialKittiDataset(
@@ -106,6 +113,7 @@ class KittiDataModule(pl.LightningDataModule):
                 color_jitter=None,
                 low_resolution=self.low_resolution,
                 sequence_length = self.sequence_length,
+                use_event=self.use_event,
             )
 
     def train_dataloader(self):

@@ -21,12 +21,20 @@ hydra.output_subdir = None
 @hydra.main(config_name="../config/monoscene.yaml")
 def main(config: DictConfig):
     exp_name = config.exp_prefix
-    exp_name += "_bestSet" ############################# 
-    exp_name += "_{}_{}".format(config.dataset, config.run)
-    exp_name += "_FrusSize_{}".format(config.frustum_size)
-    exp_name += "_nRelations{}".format(config.n_relations)
-    exp_name += "_WD{}_lr{}".format(config.weight_decay, config.lr)
-    
+
+    exp_name += f"_Seq{str(sequence_length)}"
+    exp_name += f"_Ev" if use_event else "_Fr"
+    exp_name += f"_Low" if low_resolution else "_Ori"
+
+    exp_name += f"_G{str(n_gpus)}"
+    exp_name += f"_B{str(batch_size)}"
+
+    exp_name += "_cwModified"
+
+    # exp_name += "_{}_{}".format(config.dataset, config.run)
+    # exp_name += "_FrusSize_{}".format(config.frustum_size)
+    # exp_name += "_nRelations{}".format(config.n_relations)
+    # exp_name += "_WD{}_lr{}".format(config.weight_decay, config.lr)
 
     # if config.CE_ssc_loss:
     #     exp_name += "_CEssc"
@@ -65,6 +73,7 @@ def main(config: DictConfig):
             num_workers=int(config.num_workers_per_gpu),
             low_resolution=config.low_resolution,
             sequence_length=int(config.sequence_length),
+            use_event=config.use_event,
         )
             
     elif config.dataset == "NYU":

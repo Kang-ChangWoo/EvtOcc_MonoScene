@@ -20,7 +20,7 @@ frustum_size: 8
 batch_size: 1
 n_gpus: 1
 num_workers_per_gpu: 12 # n4 have 128 workers
-exp_prefix: "after0217_noRes_noSeq_Trn2D_evt_3onoff_woNorm"
+
 run: 1
 lr: 1e-5 #1e-4
 weight_decay: 1e-4 
@@ -37,5 +37,7 @@ project_1_4: true
 project_1_8: true
 
 # CW added.
+exp_prefix: "after0217_noRes_noSeq_Trn2D_evt_3onoff_woNorm"
 low_resolution: true
 sequence_length: 3
+use_event: true
