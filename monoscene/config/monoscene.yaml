@@ -6,6 +6,7 @@ n_relations: 4
 enable_log: false
 
 kitti_root: '/root/data0/dataset/SemanticKITTI' # '/path/to/semantic_kitti'
+kitti_evt_root: '/root/data0/dataset/SemanticKITTI/evt'
 kitti_preprocess_root: '/root/data0/dataset/SemanticKITTI/preprocess_cw' # '/path/to/kitti/preprocess/folder'
 kitti_preprocess_lowRes_root: '/root/data0/dataset/SemanticKITTI/preprocess_cw_lowResolution' # CW added.
 kitti_logdir: '/root/dev0/implementation/shared_evtOcc/MonoScene/kitti_log' #'/path/to/semantic_kitti/logdir'
@@ -17,12 +18,12 @@ logdir: '/root/dev/Modified_Monoscene/logdir' # not used
 
 fp_loss: true 
 frustum_size: 8 
-batch_size: 1
-n_gpus: 1
-num_workers_per_gpu: 12 # n4 have 128 workers
+batch_size: 4
+n_gpus: 4
+num_workers_per_gpu: 8 # n4 have 128 workers
 
 run: 1
-lr: 1e-5 #1e-4
+lr: 1e-4 #1e-4 1e-6 에서 변ㅕ
 weight_decay: 1e-4 
 
 context_prior: true
@@ -32,12 +33,14 @@ CE_ssc_loss: true
 sem_scal_loss: true
 geo_scal_loss: true
 
-project_1_2: true
-project_1_4: true
-project_1_8: true
+project_1_2: false
+project_1_4: false
+project_1_8: false
 
 # CW added.
-exp_prefix: "after0217_noRes_noSeq_Trn2D_evt_3onoff_woNorm"
-low_resolution: true
-sequence_length: 3
-use_event: true
+exp_prefix: "default_setup"
+low_resolution: false
+sequence_length: 1
+use_event: false
+use_bulk: false
+use_token: false

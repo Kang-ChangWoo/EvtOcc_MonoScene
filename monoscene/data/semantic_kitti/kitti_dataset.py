@@ -13,6 +13,7 @@ class KittiDataset(Dataset):
         self,
         split,
         root,
+        evt_root,
         preprocess_root,
         preprocess_lowRes_root,
         project_scale=2,
@@ -21,9 +22,12 @@ class KittiDataset(Dataset):
         fliplr=0.0,
         low_resolution=False,
         use_event=True,
+        use_bulk=True,
+        use_token=True,
     ):
         super().__init__()
         self.root = root
+        self.evt_root = evt_root
 
         if low_resolution:
             print(f"Initializing KittiDataset with preprocess_lowRes_root: {preprocess_lowRes_root}")
@@ -49,6 +53,8 @@ class KittiDataset(Dataset):
         self.vox_origin = np.array([0, -25.6, -2])
         self.fliplr = fliplr
         self.use_event = use_event
+        self.use_bulk = use_bulk
+        self.use_token = use_token
 
         self.voxel_size = 0.4 if low_resolution else 0.2 # Low:0.4 / Defalut:0.2
 
@@ -82,12 +88,21 @@ class KittiDataset(Dataset):
                     }
                 )
 
-        self.normalize_rgb = transforms.Compose(
+        self.normalize_evt = transforms.Compose(
             [
                 transforms.ToTensor(),
                 # transforms.Normalize(
                 #     mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
                 # ),
+            ]
+        )
+
+        self.normalize_rgb = transforms.Compose(
+            [
+                transforms.ToTensor(),
+                transforms.Normalize(
+                    mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+                ),
             ]
         )
 
@@ -104,13 +119,18 @@ class KittiDataset(Dataset):
 
         rgb_path = os.path.join(self.root, "dataset", "sequences", sequence, "image_2", frame_id + ".png")
         # /root/dev/data/dataset/SemanticKITTI/event/00/image_2
-        # evt_path = os.path.join('/root/local1/changwoo/SemanticKITTI', "event_bin3_onoff_noNorm", sequence, "image_2", frame_id + ".npy")
-        # evt_path = os.path.join('/root/dev/data/dataset/SemanticKITTI', "event_bin3_onoff_noNorm", sequence, "image_2", frame_id + ".npy")
-        evt_path = os.path.join('/root/data0/dataset/SemanticKITTI', "event_bin3_onoff_noNorm", sequence, "image_2", frame_id + ".npy")
-        # /root/dev/data/dataset/SemanticKITTI
-        # /root/dev/data/dataset/SemanticKITTI/event
-        # actual: /root/dev/data/dataset/SemanticKITTI/dataset/SemanticKITTI/event/08/image_2/2160.npy
+        # evt_path = os.path.join('/root/local1/changwoo/SemanticKITTI', "event_bin3_onoff_noNorm", sequence, "image_2", frame_id + ".npy") #SemanticKITTI (remove for n2)
         
+        if self.use_event == True:      
+            #evt_path = os.path.join("/root/dev/data/dataset/SemanticKITTI/event_bin3_onoff_noNorm", sequence, "image_2", frame_id + ".npy")
+            evt_path = os.path.join(self.evt_root, sequence, "image_2", frame_id + ".npy")
+        
+        if self.use_bulk == True:
+            evt_bulk_path = os.path.join('/root/dev/data/dataset/SemanticKITTI/', "event", sequence, "image_2", frame_id + ".npy")
+        
+        if self.use_token == True:
+            evt_bulk_path = os.path.join('/root/dev/data/dataset/SemanticKITTI/', "event_tokenized", sequence, "image_2", frame_id + ".npy")
+
         data = {
             "frame_id": frame_id,
             "sequence": sequence,
@@ -182,7 +202,7 @@ class KittiDataset(Dataset):
         """
         Load RGB image into DataLoader (deprecated).
         """
-        if use_event == False:
+        if self.use_event == False:
             img = Image.open(rgb_path).convert("RGB")
             
             # Image augmentation
@@ -190,7 +210,7 @@ class KittiDataset(Dataset):
                 img = self.color_jitter(img)
 
             # PIL to numpy
-            img = np.array(img, dtype=np.float32, copy=False) 
+            img = np.array(img, dtype=np.float32, copy=False)  / 255.0
             img = img[:370, :1220, :]  # crop image
 
             # Fliplr the image
@@ -199,17 +219,21 @@ class KittiDataset(Dataset):
                 for scale in scale_3ds:
                     key = "projected_pix_" + str(scale)
                     data[key][:, 0] = img.shape[1] - 1 - data[key][:, 0]
-            
+            img = self.normalize_rgb(img)
             data["img"] = img
-
 
         """
         Load event dataset into DataLoader.
         """
-        elif use_event == True:
+        if (self.use_event == True) and (self.use_bulk == False):
             evt_frame = np.load(evt_path)
             evt = np.array(evt_frame, dtype=np.float32, copy=False) # '/ np.max(evt_frame)' not used
-            evt = evt[:3, :370, :1220] # 3(bin), 370(height), 1220(width)
+            
+            #evt = evt[:3, :370, :1220] # 3(bin), 370(height), 1220(width)
+            #evt = np.tile(evt[1, :370, :1220], (3, 1, 1))  # 1(bin) -> 3(bin), 370(height), 1220(width)
+
+            sub_evt = evt[1, :370, :1220]
+            evt = np.broadcast_to(sub_evt, (3, 370, 1220))
 
             # Apply horizontal flip (Fliplr) to evt
             if np.random.rand() < self.fliplr:
@@ -219,10 +243,20 @@ class KittiDataset(Dataset):
                     # Update x-coordinates of projected pixel data to reflect the flip
                     data[key][:, 0] = evt.shape[2] - 1 - data[key][:, 0]
 
-            evt_ts = torch.from_numpy(evt)
+            evt_ts = torch.from_numpy(evt.copy())
             evt_ts = evt_ts.float()  # or .long() depending on your needs
             data["img"] = evt_ts
             del evt, evt_frame, evt_ts
+
+        elif (self.use_event == True) and (self.use_bulk == True):
+            raw_evt = np.load(evt_bulk_path)
+            raw_evt = np.array(raw_evt, dtype=np.float32, copy=False)
+            raw_evt = torch.from_numpy(raw_evt.copy())
+            raw_evt = raw_evt.float()
+            raw_evt = raw_evt.unsqueeze(0)
+            data["img"] = raw_evt
+            #print("raw_evt.shape: ", raw_evt.shape) # 1, N, 4 출력
+            del raw_evt
 
         return data
 

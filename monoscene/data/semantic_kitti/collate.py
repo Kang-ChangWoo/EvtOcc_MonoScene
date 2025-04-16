@@ -146,7 +146,8 @@ def sequential_collate_fn(batch):
         "frustums_masks": frustums_masks if frustums_masks else None,
         "cam_k": cam_ks,  # (batch_size, seq_length, 3, 3)
         "T_velo_2_cam": T_velo_2_cams,  # (batch_size, seq_length, 4, 4)
-        "img": torch.stack(imgs),  # (batch_size, seq_length, C, H, W)
+        "img": torch.stack(imgs), # (batch_size, seq_length, C, H, W)
+       # "img": imgs, # for evt bulk
         "CP_mega_matrices": torch.stack(CP_mega_matrices),  # (batch_size, seq_length, 64, 64, 4)
         "target": torch.stack(targets),  # (batch_size, seq_length, 256, 256, 32)
     }

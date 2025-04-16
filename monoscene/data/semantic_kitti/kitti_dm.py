@@ -9,6 +9,7 @@ class KittiDataModule(pl.LightningDataModule):
     def __init__(
         self,
         root,
+        evt_root,
         preprocess_root,
         preprocess_lowRes_root,
         project_scale=2,
@@ -18,9 +19,12 @@ class KittiDataModule(pl.LightningDataModule):
         low_resolution=False,
         sequence_length=1,
         use_event=True,
+        use_bulk=True,
+        use_token=True,
     ):
         super().__init__()
         self.root = root
+        self.evt_root = evt_root
         self.preprocess_root = preprocess_root
         self.preprocess_lowRes_root = preprocess_lowRes_root
         self.project_scale = project_scale
@@ -30,6 +34,8 @@ class KittiDataModule(pl.LightningDataModule):
         self.low_resolution = low_resolution
         self.sequence_length = sequence_length
         self.use_event = use_event
+        self.use_bulk = use_bulk if use_event == True else False
+        self.use_token = use_token
 
     
     def setup(self, stage=None):
@@ -37,6 +43,7 @@ class KittiDataModule(pl.LightningDataModule):
             self.train_ds = KittiDataset(
                 split="train",
                 root=self.root,
+                evt_root=self.evt_root,
                 preprocess_root=self.preprocess_root,
                 preprocess_lowRes_root=self.preprocess_lowRes_root,
                 project_scale=self.project_scale,
@@ -44,12 +51,15 @@ class KittiDataModule(pl.LightningDataModule):
                 fliplr=0.5,
                 color_jitter=(0.4, 0.4, 0.4),
                 low_resolution=self.low_resolution,
-                use_event=self.use_event,              
+                use_event=self.use_event,
+                use_bulk=self.use_bulk,
+                use_token=self.use_token,              
             )
 
             self.val_ds = KittiDataset(
                 split="val",
                 root=self.root,
+                evt_root=self.evt_root,
                 preprocess_root=self.preprocess_root,
                 preprocess_lowRes_root=self.preprocess_lowRes_root,
                 project_scale=self.project_scale,
@@ -58,11 +68,14 @@ class KittiDataModule(pl.LightningDataModule):
                 color_jitter=None,
                 low_resolution=self.low_resolution,
                 use_event=self.use_event,
+                use_bulk=self.use_bulk,
+                use_token=self.use_token,
             )
 
             self.test_ds = KittiDataset(
                 split="test",
                 root=self.root,
+                evt_root=self.evt_root,
                 preprocess_root=self.preprocess_root,
                 preprocess_lowRes_root=self.preprocess_lowRes_root,
                 project_scale=self.project_scale,
@@ -71,12 +84,15 @@ class KittiDataModule(pl.LightningDataModule):
                 color_jitter=None,
                 low_resolution=self.low_resolution,
                 use_event=self.use_event,
+                use_bulk=self.use_bulk,
+                use_token=self.use_token,
             )
 
         elif self.sequence_length > 1:
             self.train_ds = SequentialKittiDataset(
                 split="train",
                 root=self.root,
+                evt_root=self.evt_root,
                 preprocess_root=self.preprocess_root,
                 preprocess_lowRes_root=self.preprocess_lowRes_root,
                 project_scale=self.project_scale,
@@ -86,11 +102,14 @@ class KittiDataModule(pl.LightningDataModule):
                 low_resolution=self.low_resolution,
                 sequence_length = self.sequence_length,
                 use_event=self.use_event,
+                use_bulk=self.use_bulk,
+                use_token=self.use_token,
             )
 
             self.val_ds = SequentialKittiDataset(
                 split="val",
                 root=self.root,
+                evt_root=self.evt_root,
                 preprocess_root=self.preprocess_root,
                 preprocess_lowRes_root=self.preprocess_lowRes_root,
                 project_scale=self.project_scale,
@@ -100,11 +119,14 @@ class KittiDataModule(pl.LightningDataModule):
                 low_resolution=self.low_resolution,
                 sequence_length = self.sequence_length,
                 use_event=self.use_event,
+                use_bulk=self.use_bulk,
+                use_token=self.use_token,
             )
 
             self.test_ds = SequentialKittiDataset(
                 split="test",
                 root=self.root,
+                evt_root=self.evt_root,
                 preprocess_root=self.preprocess_root,
                 preprocess_lowRes_root=self.preprocess_lowRes_root,
                 project_scale=self.project_scale,
@@ -114,6 +136,8 @@ class KittiDataModule(pl.LightningDataModule):
                 low_resolution=self.low_resolution,
                 sequence_length = self.sequence_length,
                 use_event=self.use_event,
+                use_bulk=self.use_bulk,
+                use_token=self.use_token,
             )
 
     def train_dataloader(self):
