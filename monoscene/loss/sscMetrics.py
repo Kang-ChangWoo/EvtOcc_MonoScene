@@ -37,6 +37,153 @@ def get_accuracy(predict, target, weight=None):  # 0.05s
     return acc
 
 
+class DepthMetrics:
+    """
+    Compute standard depth estimation metrics over batches of predictions and targets.
+    Metrics:
+      - abs_rel: mean absolute relative error
+      - sq_rel: mean squared relative error
+      - rmse: root mean squared error
+      - rmse_log: root mean squared log error
+      - a1, a2, a3: threshold accuracies at 1.25, 1.25^2, 1.25^3
+    """
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        """Clear all stored metric values."""
+        self.abs_rels = []
+        self.sq_rels = []
+        self.rmses = []
+        self.rmselog = []
+        self.a1s = []
+        self.a2s = []
+        self.a3s = []
+
+    def add_batch(self, pred, target):
+        try: 
+            if target.is_cuda:
+                target = target.detach().cpu().numpy()
+        except AttributeError:
+            pass
+
+        try:
+            if pred.is_cuda:
+                pred = pred.detach().cpu().numpy()
+        except AttributeError:
+            pass
+        #valid = np.logical_and(40 > target, target > 0)
+
+        #target = target.detach().cpu().numpy()
+        #pred      = pred.detach().cpu().numpy()
+        #target = target.cpu()
+        #pred = pred.cpu()
+        valid = np.logical_and(target > 0, target < 80)  
+        
+        pred_valid = pred[valid]
+        target_valid = target[valid]
+        
+        # -----------------------------------------
+        # zero / negative 값을 모두 eps로 클램핑
+        eps = 1e-6
+        pred_valid = np.clip(pred_valid,  eps, None)
+        # target_valid = np.clip(target_valid, eps, None)
+        # -----------------------------------------
+
+        median_scaling_factor = np.median(target_valid) / np.median(pred_valid)
+        pred_valid *= median_scaling_factor   
+
+        abs_rel = np.mean(np.abs(pred_valid - target_valid) / target_valid)
+        sq_rel  = np.mean((pred_valid - target_valid)**2 / target_valid)
+        rmse    = np.sqrt(np.mean((pred_valid - target_valid)**2))
+        rmse_log = np.sqrt(np.mean((np.log(pred_valid) - np.log(target_valid))**2))
+        rmse_log = np.sqrt(np.mean((np.log(pred_valid) - np.log(target_valid))**2))
+
+        # threshold accuracy
+        thresh = np.maximum(pred_valid / target_valid, target_valid / pred_valid)
+        a1 = np.mean(thresh < 1.25)
+        a2 = np.mean(thresh < 1.25**2)
+        a3 = np.mean(thresh < 1.25**3)
+
+        self.abs_rels.append(abs_rel)
+        self.sq_rels.append(sq_rel)
+        self.rmses.append(rmse)
+        self.rmselog.append(rmse_log)
+        self.a1s.append(a1)
+        self.a2s.append(a2)
+        self.a3s.append(a3)
+
+    # def add_batch(self, pred, target):
+    #     """
+    #     Add a batch of depth predictions and ground truths.
+
+    #     Args:
+    #         pred (np.ndarray): Predicted depths, shape (B, H, W)
+    #         target (np.ndarray): Ground truth depths, shape (B, H, W)
+    #     """
+    #     # Flatten and mask invalid depths
+    #     valid = target > 0
+    #     pred_valid = pred[valid]
+    #     target_valid = target[valid]
+    #     if pred_valid.size == 0:
+    #         return
+
+    #     # Compute errors
+    #     abs_rel = np.mean(np.abs(pred_valid - target_valid) / target_valid)
+    #     sq_rel = np.mean((pred_valid - target_valid)**2 / target_valid)
+    #     rmse = np.sqrt(np.mean((pred_valid - target_valid)**2))
+    #     rmse_log = np.sqrt(np.mean((np.log(pred_valid) - np.log(target_valid))**2))
+
+    #     # Threshold accuracies
+    #     thresh = np.maximum(pred_valid / target_valid, target_valid / pred_valid)
+    #     a1 = np.mean(thresh < 1.25)
+    #     a2 = np.mean(thresh < 1.25**2)
+    #     a3 = np.mean(thresh < 1.25**3)
+
+    #     # Store
+    #     self.abs_rels.append(abs_rel)
+    #     self.sq_rels.append(sq_rel)
+    #     self.rmses.append(rmse)
+    #     self.rmselog.append(rmse_log)
+    #     self.a1s.append(a1)
+    #     self.a2s.append(a2)
+    #     self.a3s.append(a3)
+
+    def get_results(self):
+        """
+        Return the averaged metrics over all added batches.
+
+        Returns:
+            dict: {
+                'abs_rel': float,
+                'sq_rel': float,
+                'rmse': float,
+                'rmse_log': float,
+                'a1': float,
+                'a2': float,
+                'a3': float
+            }
+        """
+        # return {
+        #     'abs_rel': float(np.mean(self.abs_rels)) if self.abs_rels else 0.0,
+        #     'sq_rel': float(np.mean(self.sq_rels)) if self.sq_rels else 0.0,
+        #     'rmse': float(np.mean(self.rmses)) if self.rmses else 0.0,
+        #     'rmse_log': float(np.mean(self.rmselog)) if self.rmselog else 0.0,
+        #     'a1': float(np.mean(self.a1s)) if self.a1s else 0.0,
+        #     'a2': float(np.mean(self.a2s)) if self.a2s else 0.0,
+        #     'a3': float(np.mean(self.a3s)) if self.a3s else 0.0,
+        # }
+        return {
+            'abs_rel': float(np.mean(self.abs_rels)),
+            'sq_rel': float(np.mean(self.sq_rels)),
+            'rmse': float(np.mean(self.rmses)),
+            'rmse_log': float(np.mean(self.rmselog)),
+            'a1': float(np.mean(self.a1s)),
+            'a2': float(np.mean(self.a2s)),
+            'a3': float(np.mean(self.a3s)),
+        }
+
+
 class SSCMetrics:
     def __init__(self, n_classes):
         self.n_classes = n_classes

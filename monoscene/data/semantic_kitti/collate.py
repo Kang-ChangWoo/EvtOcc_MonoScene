@@ -4,6 +4,10 @@ import torch
 def collate_fn(batch):
     data = {}
     imgs = []
+    evFs = []
+    evRs = []
+    evTs = []
+    depths = []
     CP_mega_matrices = []
     targets = []
     frame_ids = []
@@ -13,13 +17,14 @@ def collate_fn(batch):
     T_velo_2_cams = []
     frustums_masks = []
     frustums_class_dists = []
-
+    """
     scale_3ds = batch[0]["scale_3ds"]
     for scale_3d in scale_3ds:
         data["projected_pix_{}".format(scale_3d)] = []
         data["fov_mask_{}".format(scale_3d)] = []
-
+    """
     for idx, input_dict in enumerate(batch):
+        """
         cam_ks.append(torch.from_numpy(input_dict["cam_k"]).double())
         T_velo_2_cams.append(torch.from_numpy(input_dict["T_velo_2_cam"]).float())
 
@@ -28,31 +33,62 @@ def collate_fn(batch):
             frustums_class_dists.append(
                 torch.from_numpy(input_dict["frustums_class_dists"]).float()
             )
+        """
 
         for key in data:
             data[key].append(torch.from_numpy(input_dict[key]))
 
-        img = input_dict["img"]
-        imgs.append(img)
+        if "img" in input_dict:
+            img = input_dict["img"]
+            imgs.append(img)
+        else:
+            imgs = [torch.zeros(1, 1)]
+
+
+        if "evF" in input_dict:
+            evF = input_dict["evF"]
+            evFs.append(evF)
+        else:
+            evFs = [torch.zeros(1, 1)]
+
+        
+        if "evR" in input_dict:
+            evR = input_dict["evR"]
+            evRs.append(evR)
+        else:
+            evRs = [torch.zeros(1, 1)]
+
+
+        if "evT" in input_dict:
+            evT = input_dict["evT"]
+            evTs.append(evT)
+        else:
+            evTs = [torch.zeros(1, 1)]
+
+        depth = input_dict["depth"]
+        depths.append(depth)
 
         frame_ids.append(input_dict["frame_id"])
         sequences.append(input_dict["sequence"])
         
-        
-        target = torch.from_numpy(input_dict["target"])
-        targets.append(target)
-        CP_mega_matrices.append(torch.from_numpy(input_dict["CP_mega_matrix"]))            
+        #target = torch.from_numpy(input_dict["target"])
+        #targets.append(target)
+        #CP_mega_matrices.append(torch.from_numpy(input_dict["CP_mega_matrix"]))            
 
     ret_data = {
         "frame_id": frame_ids,
         "sequence": sequences,
-        "frustums_class_dists": frustums_class_dists,
-        "frustums_masks": frustums_masks,
-        "cam_k": cam_ks,
-        "T_velo_2_cam": T_velo_2_cams,
+        #"frustums_class_dists": frustums_class_dists,
+        #"frustums_masks": frustums_masks,
+        #"cam_k": cam_ks,
+        #"T_velo_2_cam": T_velo_2_cams,
         "img": torch.stack(imgs),
-        "CP_mega_matrices": CP_mega_matrices,
-        "target": torch.stack(targets)
+        "evF": torch.stack(evFs),
+        "evR": torch.stack(evRs),
+        "evT": torch.stack(evTs),
+        "depth": torch.stack(depths),
+        #"CP_mega_matrices": CP_mega_matrices,
+        #"target": torch.stack(targets)
     }
     
 
@@ -119,14 +155,14 @@ def sequential_collate_fn(batch):
             frame_ids_seq.append(seq_data["frame_id"])
             sequences_seq.append(seq_data["sequence"])
 
-            target = torch.from_numpy(seq_data["target"])
-            targets_seq.append(target)
+            #target = torch.from_numpy(seq_data["target"])
+            #targets_seq.append(target)
             CP_mega_matrices_seq.append(torch.from_numpy(seq_data["CP_mega_matrix"]))
 
         # 스택 쌓기 (시퀀스 단위)
         imgs.append(torch.stack(imgs_seq))  # (batch_size, seq_length, C, H, W)
         CP_mega_matrices.append(torch.stack(CP_mega_matrices_seq))  # (batch_size, seq_length, 64, 64, 4)
-        targets.append(torch.stack(targets_seq))  # (batch_size, seq_length, 256, 256, 32)
+        #targets.append(torch.stack(targets_seq))  # (batch_size, seq_length, 256, 256, 32)
 
         cam_ks.append(torch.stack(cam_ks_seq))  # (batch_size, seq_length, 3, 3)
         T_velo_2_cams.append(torch.stack(T_velo_2_cams_seq))  # (batch_size, seq_length, 4, 4)
@@ -146,9 +182,10 @@ def sequential_collate_fn(batch):
         "frustums_masks": frustums_masks if frustums_masks else None,
         "cam_k": cam_ks,  # (batch_size, seq_length, 3, 3)
         "T_velo_2_cam": T_velo_2_cams,  # (batch_size, seq_length, 4, 4)
-        "img": torch.stack(imgs),  # (batch_size, seq_length, C, H, W)
+        "img": torch.stack(imgs), # (batch_size, seq_length, C, H, W)
+       # "img": imgs, # for evt bulk
         "CP_mega_matrices": torch.stack(CP_mega_matrices),  # (batch_size, seq_length, 64, 64, 4)
-        "target": torch.stack(targets),  # (batch_size, seq_length, 256, 256, 32)
+        #"target": torch.stack(targets),  # (batch_size, seq_length, 256, 256, 32)
     }
 
     for key in data:

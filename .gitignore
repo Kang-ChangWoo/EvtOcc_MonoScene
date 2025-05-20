@@ -1,10 +1,16 @@
 *.ckpt
+*.pth
 
 *.pyc
 __pycache__/
 *.egg-info/
 outputs/
 result/
+results/
+kitti_log/
+checkpoints/
+Depth_Anything_V2/assets/
+checkpoints/depth_anything_v2_vitb.pth
 
 trained_models/*.ckpt
 monoscene_output/*

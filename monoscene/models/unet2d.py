@@ -73,19 +73,19 @@ class DecoderBN(nn.Module):
             )
 
             self.up16 = UpSampleBN(
-                skip_input=features + 224, output_features=self.feature_1_16
+                skip_input=features + 176, output_features=self.feature_1_16 # 224
             )
             self.up8 = UpSampleBN(
-                skip_input=self.feature_1_16 + 80, output_features=self.feature_1_8
+                skip_input=self.feature_1_16 + 64, output_features=self.feature_1_8 # 80
             )
             self.up4 = UpSampleBN(
-                skip_input=self.feature_1_8 + 48, output_features=self.feature_1_4
+                skip_input=self.feature_1_8 + 40, output_features=self.feature_1_4 # 48
             )
             self.up2 = UpSampleBN(
-                skip_input=self.feature_1_4 + 32, output_features=self.feature_1_2
+                skip_input=self.feature_1_4 + 24, output_features=self.feature_1_2 #32
             )
             self.up1 = UpSampleBN(
-                skip_input=self.feature_1_2 + 3, output_features=self.feature_1_1
+                skip_input=self.feature_1_2 + 3, output_features=self.feature_1_1 #3
             )
         else:
             self.resize_output_1_1 = nn.Conv2d(3, out_feature, kernel_size=1)
@@ -174,8 +174,12 @@ class UNet2D(nn.Module):
 
     @classmethod
     def build(cls, **kwargs):
-        basemodel_name = "tf_efficientnet_b7_ns"
-        num_features = 2560
+        #basemodel_name = "tf_efficientnet_b7_ns"
+        #num_features = 2560
+
+        basemodel_name = 'tf_efficientnet_b5_ns'
+        num_features = 2048
+
 
         print("Loading base model ()...".format(basemodel_name), end="")
         basemodel = torch.hub.load("rwightman/gen-efficientnet-pytorch", basemodel_name, pretrained=True) #True sequence 필요
@@ -185,6 +189,10 @@ class UNet2D(nn.Module):
         print("Removing last two layers (global_pool & classifier).")
         basemodel.global_pool = nn.Identity()
         basemodel.classifier = nn.Identity()
+
+        # # Freeze the parameters of the basemodel
+        # for param in basemodel.parameters():
+        #     param.requires_grad = False
 
         # Building Encoder-Decoder model
         print("Building Encoder-Decoder model..", end="")

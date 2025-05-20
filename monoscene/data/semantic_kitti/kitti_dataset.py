@@ -13,33 +13,36 @@ class KittiDataset(Dataset):
         self,
         split,
         root,
+        evt_root,
         preprocess_root,
         preprocess_lowRes_root,
         project_scale=2,
         frustum_size=4,
         color_jitter=None,
         fliplr=0.0,
-        low_resolution=False,
-        use_event=True,
+        use_rgb = False,
+        use_event_frm = False,
+        use_event_raw = False,
+        use_event_tkn = False,
+        depth_validation = True,
     ):
         super().__init__()
         self.root = root
+        self.evt_root = evt_root
 
-        if low_resolution:
-            print(f"Initializing KittiDataset with preprocess_lowRes_root: {preprocess_lowRes_root}")
-            self.label_root = os.path.join(preprocess_lowRes_root, "labels")
-        else:
-            print(f"Initializing KittiDataset with preprocess_root: {preprocess_root}")
-            self.label_root = os.path.join(preprocess_root, "labels")
+
+        print(f"Initializing KittiDataset with preprocess_root: {preprocess_root}")
+        self.label_root = os.path.join(preprocess_root, "labels")
 
         self.n_classes = 20
 
         splits = {
             "train": ["00", "01", "02", "03", "04", "05", "06", "07", "09", "10"],
             "val": ["08"],
-            "test": ["00", "01", "02", "03", "04", "05", "06", "07","08", "09", "10","11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21"],
-            # "test": ["11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21"] # original
+            #"test": ["00", "01", "02", "03", "04", "05", "06", "07","08", "09", "10","11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21"],
+            "test": ["11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21"] # original
         }
+
         self.split = split
         self.sequences = splits[split]
         self.frustum_size = frustum_size
@@ -47,16 +50,20 @@ class KittiDataset(Dataset):
         self.output_scale = int(self.project_scale / 2)
         self.scene_size = (51.2, 51.2, 6.4)
         self.vox_origin = np.array([0, -25.6, -2])
-        self.fliplr = fliplr
-        self.use_event = use_event
+        self.fliplr = 0.0 #fliplr
+        self.use_rgb = use_rgb
+        self.use_event_frm = use_event_frm
+        self.use_event_raw = use_event_raw
+        self.use_event_tkn = use_event_tkn
 
-        self.voxel_size = 0.4 if low_resolution else 0.2 # Low:0.4 / Defalut:0.2
+        self.voxel_size = 0.2
 
         self.img_W = 1220
         self.img_H = 370
 
         self.color_jitter = (transforms.ColorJitter(*color_jitter) if color_jitter else None)
         self.scans = []
+
         for sequence in self.sequences:
 
             calib = self.read_calib(os.path.join(self.root, "dataset", "sequences", sequence, "calib.txt"))
@@ -82,12 +89,21 @@ class KittiDataset(Dataset):
                     }
                 )
 
-        self.normalize_rgb = transforms.Compose(
+        self.normalize_evt = transforms.Compose(
             [
                 transforms.ToTensor(),
                 # transforms.Normalize(
                 #     mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
                 # ),
+            ]
+        )
+
+        self.normalize_rgb = transforms.Compose(
+            [
+                transforms.ToTensor(),
+                transforms.Normalize(
+                    mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+                ),
             ]
         )
 
@@ -103,14 +119,11 @@ class KittiDataset(Dataset):
         frame_id = os.path.splitext(filename)[0]
 
         rgb_path = os.path.join(self.root, "dataset", "sequences", sequence, "image_2", frame_id + ".png")
-        # /root/dev/data/dataset/SemanticKITTI/event/00/image_2
-        # evt_path = os.path.join('/root/local1/changwoo/SemanticKITTI', "event_bin3_onoff_noNorm", sequence, "image_2", frame_id + ".npy")
-        # evt_path = os.path.join('/root/dev/data/dataset/SemanticKITTI', "event_bin3_onoff_noNorm", sequence, "image_2", frame_id + ".npy")
-        evt_path = os.path.join('/root/data0/dataset/SemanticKITTI', "event_bin3_onoff_noNorm", sequence, "image_2", frame_id + ".npy")
-        # /root/dev/data/dataset/SemanticKITTI
-        # /root/dev/data/dataset/SemanticKITTI/event
-        # actual: /root/dev/data/dataset/SemanticKITTI/dataset/SemanticKITTI/event/08/image_2/2160.npy
-        
+        evF_path = os.path.join(self.root, "event_bin3_onoff", sequence, "image_2", frame_id + ".npy")
+        evR_path = os.path.join('/root/dev/data/dataset/SemanticKITTI/', "event", sequence, "image_2", frame_id + ".npy")
+        evT_path = os.path.join('/root/dev/data/dataset/SemanticKITTI/', "event_tokenized", sequence, "image_2", frame_id + ".npy")
+        depth_path = os.path.join(self.root, "depth", "sequences", sequence, frame_id + ".npy")
+
         data = {
             "frame_id": frame_id,
             "sequence": sequence,
@@ -118,6 +131,14 @@ class KittiDataset(Dataset):
             "T_velo_2_cam": T_velo_2_cam,
             "proj_matrix": proj_matrix,
         }
+
+
+        """
+
+        -----------------------------------------------
+        [Deprecated] we don't use 3D projection anymore.
+        -----------------------------------------------
+
         scale_3ds = [self.output_scale, self.project_scale]
         data["scale_3ds"] = scale_3ds
         cam_k = P[0:3, 0:3]
@@ -139,6 +160,7 @@ class KittiDataset(Dataset):
             data["pix_z_{}".format(scale_3d)] = pix_z
             data["fov_mask_{}".format(scale_3d)] = fov_mask
 
+        
         # for generating result from monoscene without error
         if self.split in ["val", "train"]:
             target_1_path = os.path.join(self.label_root, sequence, frame_id + "_1_1.npy")
@@ -172,6 +194,7 @@ class KittiDataset(Dataset):
                 n_classes=20,
                 size=self.frustum_size,
             )
+
         elif self.split == 'test':
             frustums_masks = None
             frustums_class_dists = None
@@ -180,9 +203,12 @@ class KittiDataset(Dataset):
         data["frustums_class_dists"] = frustums_class_dists
 
         """
-        Load RGB image into DataLoader (deprecated).
+
+
         """
-        if use_event == False:
+        If RGB?
+        """
+        if self.use_rgb == True:
             img = Image.open(rgb_path).convert("RGB")
             
             # Image augmentation
@@ -190,7 +216,7 @@ class KittiDataset(Dataset):
                 img = self.color_jitter(img)
 
             # PIL to numpy
-            img = np.array(img, dtype=np.float32, copy=False) 
+            img = np.array(img, dtype=np.float32, copy=False)  / 255.0
             img = img[:370, :1220, :]  # crop image
 
             # Fliplr the image
@@ -199,30 +225,57 @@ class KittiDataset(Dataset):
                 for scale in scale_3ds:
                     key = "projected_pix_" + str(scale)
                     data[key][:, 0] = img.shape[1] - 1 - data[key][:, 0]
-            
+            img = self.normalize_rgb(img)
             data["img"] = img
-
 
         """
         Load event dataset into DataLoader.
         """
-        elif use_event == True:
-            evt_frame = np.load(evt_path)
+        if self.use_event_frm == True:
+            evt_frame = np.load(evF_path)
             evt = np.array(evt_frame, dtype=np.float32, copy=False) # '/ np.max(evt_frame)' not used
+            
             evt = evt[:3, :370, :1220] # 3(bin), 370(height), 1220(width)
+            #evt = np.tile(evt[1, :370, :1220], (3, 1, 1))  # 1(bin) -> 3(bin), 370(height), 1220(width)
+
+            #sub_evt = evt[1, :370, :1220]
+            #evt = np.broadcast_to(sub_evt, (3, 370, 1220))
 
             # Apply horizontal flip (Fliplr) to evt
-            if np.random.rand() < self.fliplr:
-                evt = np.ascontiguousarray(np.flip(evt, axis=2))  # Flip along the width axis (axis 2)
-                for scale in scale_3ds:
-                    key = "projected_pix_" + str(scale)
-                    # Update x-coordinates of projected pixel data to reflect the flip
-                    data[key][:, 0] = evt.shape[2] - 1 - data[key][:, 0]
+            # if np.random.rand() < self.fliplr:
+            #     evt = np.ascontiguousarray(np.flip(evt, axis=2))  # Flip along the width axis (axis 2)
+            #     for scale in scale_3ds:
+            #         key = "projected_pix_" + str(scale)
+            #         # Update x-coordinates of projected pixel data to reflect the flip
+            #         data[key][:, 0] = evt.shape[2] - 1 - data[key][:, 0]
 
-            evt_ts = torch.from_numpy(evt)
+            evt_ts = torch.from_numpy(evt.copy())
             evt_ts = evt_ts.float()  # or .long() depending on your needs
-            data["img"] = evt_ts
+            data["evF"] = evt_ts
             del evt, evt_frame, evt_ts
+
+        if self.use_event_raw == True:
+            raw_evt = np.load(evt_bulk_path)
+            raw_evt = np.array(raw_evt, dtype=np.float32, copy=False)
+            raw_evt = torch.from_numpy(raw_evt.copy())
+            raw_evt = raw_evt.float()
+            raw_evt = raw_evt.unsqueeze(0)
+            # raw_evt = raw_evt.squeeze(0)  # remove the first dimension
+            data["evR"] = raw_evt
+            # print("raw_evt.shape: ", raw_evt.shape) # 1, N, 4 출력
+            del raw_evt
+
+        if self.use_event_tkn == True:
+            pass
+            data["evR"] = None
+
+        depth_gt = np.load(depth_path)
+        depth_gt = np.array(depth_gt, dtype=np.float32, copy=False)
+        depth_gt = torch.from_numpy(depth_gt.copy())
+        depth_gt = depth_gt[:370, :1220].unsqueeze(0)  # Add a new dimension at the beginning
+
+
+        data['depth'] = depth_gt
 
         return data
 
