@@ -10,6 +10,8 @@ results/*
 kitti_log/
 checkpoints/
 Depth_Anything_V2/assets/*
+Depth_Anything_V2/assets/examples/
+Depth_Anything_V2/assets/examples_video/
 checkpoints/depth_anything_v2_vitb.pth
 
 trained_models/*.ckpt
