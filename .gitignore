@@ -5,11 +5,11 @@
 __pycache__/
 *.egg-info/
 outputs/
-result/
-results/
+result/*
+results/*
 kitti_log/
 checkpoints/
-Depth_Anything_V2/assets/
+Depth_Anything_V2/assets/*
 checkpoints/depth_anything_v2_vitb.pth
 
 trained_models/*.ckpt
